@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import 'connection/connection.dart' as connection;
 import 'tables/tables.dart';
 import 'daos/category_dao.dart';
 import 'daos/wallet_dao.dart';
@@ -178,5 +178,5 @@ class AppDatabase extends _$AppDatabase {
 }
 
 QueryExecutor _openConnection() {
-  return driftDatabase(name: AppConstants.databaseName);
+  return connection.openConnection(name: AppConstants.databaseName);
 }
