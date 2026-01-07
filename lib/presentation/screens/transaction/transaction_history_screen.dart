@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/enums/enums.dart';
 import '../../../domain/entities/transaction_entity.dart';
 import '../../../domain/entities/category_entity.dart';
 import '../../helpers/date_formatter.dart';
+import '../../helpers/vietnamese_ime_helper.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/wallet_provider.dart';
@@ -129,6 +131,7 @@ class _TransactionHistoryScreenState
     return TextField(
       controller: _searchController,
       autofocus: true,
+      inputFormatters: [IMEPreservingFormatter()],
       decoration: InputDecoration(
         hintText: 'Tìm theo ghi chú...',
         border: InputBorder.none,

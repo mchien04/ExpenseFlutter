@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../main.dart';
 import '../../providers/backup_provider.dart';
 import '../../theme/app_colors.dart';
+import '../category/category_screens.dart';
+import '../recurring/recurring_screens.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -25,6 +27,36 @@ class SettingsScreen extends ConsumerWidget {
             isDark: isDark,
             children: [
               _buildThemeTile(context, ref, themeMode, isDark),
+            ],
+          ),
+          _buildSection(
+            title: 'Quản lý',
+            isDark: isDark,
+            children: [
+              _buildSettingTile(
+                icon: Icons.category,
+                title: 'Danh mục',
+                subtitle: 'Tạo và quản lý danh mục tùy chỉnh',
+                isDark: isDark,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CategoriesScreen(),
+                  ),
+                ),
+              ),
+              _buildSettingTile(
+                icon: Icons.repeat,
+                title: 'Giao dịch định kỳ',
+                subtitle: 'Quản lý giao dịch tự động hàng tháng',
+                isDark: isDark,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const RecurringTemplatesScreen(),
+                  ),
+                ),
+              ),
             ],
           ),
           _buildSection(
