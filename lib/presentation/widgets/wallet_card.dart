@@ -54,7 +54,7 @@ class WalletCard extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -62,24 +62,24 @@ class WalletCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
                       Icons.account_balance_wallet,
                       color: Colors.white,
-                      size: 20,
+                      size: 18,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       name,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -87,7 +87,7 @@ class WalletCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -95,19 +95,24 @@ class WalletCard extends StatelessWidget {
                     'Số dư',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    CurrencyFormatter.format(balance, currencyCode: currencyCode),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: balance.abs() >= 1000000000 ? 16 : 20,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      CurrencyFormatter.format(balance,
+                          currencyCode: currencyCode),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: balance.abs() >= 1000000000 ? 15 : 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

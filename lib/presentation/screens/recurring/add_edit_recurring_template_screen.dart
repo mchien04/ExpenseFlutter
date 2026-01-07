@@ -4,29 +4,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/enums/enums.dart';
 import '../../../domain/entities/category_entity.dart';
-import '../../../domain/entities/transaction_entity.dart';
+import '../../../domain/entities/recurring_template_entity.dart';
 import '../../helpers/date_formatter.dart';
 import '../../helpers/vietnamese_ime_helper.dart';
 import '../../providers/category_provider.dart';
-import '../../providers/transaction_provider.dart';
+import '../../providers/recurring_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../theme/app_colors.dart';
 
-class AddEditTransactionScreen extends ConsumerStatefulWidget {
-  final TransactionEntity? transaction;
+class AddEditRecurringTemplateScreen extends ConsumerStatefulWidget {
+  final RecurringTemplateEntity? template;
 
-  const AddEditTransactionScreen({
+  const AddEditRecurringTemplateScreen({
     super.key,
-    this.transaction,
+    this.template,
   });
 
   @override
-  ConsumerState<AddEditTransactionScreen> createState() =>
-      _AddEditTransactionScreenState();
+  ConsumerState<AddEditRecurringTemplateScreen> createState() =>
+      _AddEditRecurringTemplateScreenState();
 }
 
-class _AddEditTransactionScreenState
-    extends ConsumerState<AddEditTransactionScreen> {
+class _AddEditRecurringTemplateScreenState
+    extends ConsumerState<AddEditRecurringTemplateScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
@@ -34,25 +34,30 @@ class _AddEditTransactionScreenState
   late TransactionType _selectedType;
   String? _selectedCategoryId;
   String? _selectedWalletId;
-  late DateTime _selectedDate;
+  late RecurringFrequency _selectedFrequency;
+  late DateTime _nextExecutionDate;
+  bool _isActive = true;
   bool _isLoading = false;
 
-  bool get isEditing => widget.transaction != null;
+  bool get isEditing => widget.template != null;
 
   @override
   void initState() {
     super.initState();
     if (isEditing) {
-      final t = widget.transaction!;
+      final t = widget.template!;
       _amountController.text = t.amount.toStringAsFixed(0);
       _noteController.text = t.note;
       _selectedType = t.type;
       _selectedCategoryId = t.categoryId;
       _selectedWalletId = t.walletId;
-      _selectedDate = t.date;
+      _selectedFrequency = t.frequency;
+      _nextExecutionDate = t.nextExecutionDate;
+      _isActive = t.isActive;
     } else {
       _selectedType = TransactionType.expense;
-      _selectedDate = DateTime.now();
+      _selectedFrequency = RecurringFrequency.monthly;
+      _nextExecutionDate = DateTime.now();
     }
   }
 
@@ -69,56 +74,77 @@ class _AddEditTransactionScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Sửa giao dịch' : 'Thêm giao dịch'),
-        actions: [
-          if (isEditing)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: _confirmDelete,
-            ),
-        ],
+        title: Text(isEditing ? 'Sửa giao dịch định kỳ' : 'Tạo giao dịch định kỳ'),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildTypeSelector(),
-            const SizedBox(height: 24),
+            _buildTypeSelector(isDark),
+            const SizedBox(height: 20),
             _buildAmountField(isDark),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _buildCategorySelector(isDark),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _buildWalletSelector(isDark),
-            const SizedBox(height: 16),
-            _buildDateSelector(isDark),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+            _buildFrequencySelector(isDark),
+            const SizedBox(height: 20),
+            _buildNextExecutionDatePicker(isDark),
+            const SizedBox(height: 20),
             _buildNoteField(isDark),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
+            _buildActiveSwitch(isDark),
+            const SizedBox(height: 24),
             _buildSubmitButton(),
+            if (isEditing) ...[
+              const SizedBox(height: 12),
+              _buildDeleteButton(),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTypeSelector() {
-    return Row(
+  Widget _buildTypeSelector(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _buildTypeButton(
-            type: TransactionType.expense,
-            label: 'Chi tiêu',
-            color: AppColors.expense,
+        Text(
+          'Loại giao dịch',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isDark
+                ? AppColors.textSecondaryDark
+                : AppColors.textSecondaryLight,
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildTypeButton(
-            type: TransactionType.income,
-            label: 'Thu nhập',
-            color: AppColors.income,
-          ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTypeButton(
+                type: TransactionType.expense,
+                label: 'Chi tiêu',
+                icon: Icons.arrow_upward_rounded,
+                color: AppColors.expense,
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildTypeButton(
+                type: TransactionType.income,
+                label: 'Thu nhập',
+                icon: Icons.arrow_downward_rounded,
+                color: AppColors.income,
+                isDark: isDark,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -127,37 +153,46 @@ class _AddEditTransactionScreenState
   Widget _buildTypeButton({
     required TransactionType type,
     required String label,
+    required IconData icon,
     required Color color,
+    required bool isDark,
   }) {
     final isSelected = _selectedType == type;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedType = type;
-          _selectedCategoryId = null;
-        });
-      },
+      onTap: () => setState(() {
+        _selectedType = type;
+        _selectedCategoryId = null;
+      }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: isSelected ? color : color.withAlpha(25),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : color.withAlpha(75),
+            color: isSelected ? color : Colors.transparent,
             width: 2,
           ),
         ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
               color: isSelected ? Colors.white : color,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
+              size: 20,
             ),
-          ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : color,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -185,25 +220,20 @@ class _AddEditTransactionScreenState
             FilteringTextInputFormatter.digitsOnly,
             _ThousandsSeparatorInputFormatter(),
           ],
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: _selectedType == TransactionType.expense
-                ? AppColors.expense
-                : AppColors.income,
-          ),
           decoration: InputDecoration(
             hintText: '0',
-            suffixText: '₫',
-            suffixStyle: TextStyle(
-              fontSize: 20,
-              color: isDark
-                  ? AppColors.textSecondaryDark
-                  : AppColors.textSecondaryLight,
+            suffixText: 'VND',
+            prefixIcon: Icon(
+              _selectedType == TransactionType.expense
+                  ? Icons.remove_circle_outline
+                  : Icons.add_circle_outline,
+              color: _selectedType == TransactionType.expense
+                  ? AppColors.expense
+                  : AppColors.income,
             ),
           ),
           validator: (value) {
-            if (value == null || value.isEmpty) {
+            if (value == null || value.trim().isEmpty) {
               return 'Vui lòng nhập số tiền';
             }
             final amount = double.tryParse(value.replaceAll('.', ''));
@@ -218,9 +248,7 @@ class _AddEditTransactionScreenState
   }
 
   Widget _buildCategorySelector(bool isDark) {
-    final categoriesAsync = _selectedType == TransactionType.expense
-        ? ref.watch(expenseCategoriesProvider)
-        : ref.watch(incomeCategoriesProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,7 +266,10 @@ class _AddEditTransactionScreenState
         const SizedBox(height: 8),
         categoriesAsync.when(
           data: (categories) {
-            if (categories.isEmpty) {
+            final filteredCategories =
+                categories.where((c) => c.type == _selectedType).toList();
+
+            if (filteredCategories.isEmpty) {
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -251,7 +282,7 @@ class _AddEditTransactionScreenState
             return Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: categories.map((category) {
+              children: filteredCategories.map((category) {
                 return _buildCategoryChip(category, isDark);
               }).toList(),
             );
@@ -343,24 +374,18 @@ class _AddEditTransactionScreenState
               );
             }
 
-            if (_selectedWalletId == null && wallets.isNotEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                setState(() => _selectedWalletId = wallets.first.id);
-              });
-            }
-
             return DropdownButtonFormField<String>(
               value: _selectedWalletId,
               decoration: const InputDecoration(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                hintText: 'Chọn ví',
+                prefixIcon: Icon(Icons.account_balance_wallet_outlined),
               ),
-              items: wallets.map((wallet) {
-                return DropdownMenuItem(
-                  value: wallet.id,
-                  child: Text(wallet.name),
-                );
-              }).toList(),
+              items: wallets
+                  .map((w) => DropdownMenuItem(
+                        value: w.id,
+                        child: Text(w.name),
+                      ))
+                  .toList(),
               onChanged: (value) => setState(() => _selectedWalletId = value),
               validator: (value) {
                 if (value == null) return 'Vui lòng chọn ví';
@@ -375,12 +400,12 @@ class _AddEditTransactionScreenState
     );
   }
 
-  Widget _buildDateSelector(bool isDark) {
+  Widget _buildFrequencySelector(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Ngày',
+          'Tần suất',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -390,10 +415,47 @@ class _AddEditTransactionScreenState
           ),
         ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _selectDate,
+        DropdownButtonFormField<RecurringFrequency>(
+          value: _selectedFrequency,
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.repeat),
+          ),
+          items: RecurringFrequency.values
+              .map((f) => DropdownMenuItem(
+                    value: f,
+                    child: Text(_getFrequencyText(f)),
+                  ))
+              .toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _selectedFrequency = value);
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNextExecutionDatePicker(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Ngày thực hiện kế tiếp',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isDark
+                ? AppColors.textSecondaryDark
+                : AppColors.textSecondaryLight,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: () => _selectNextExecutionDate(context),
+          borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isDark ? AppColors.cardDark : AppColors.cardLight,
               borderRadius: BorderRadius.circular(12),
@@ -410,22 +472,13 @@ class _AddEditTransactionScreenState
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    DateFormatter.formatDate(_selectedDate),
+                    DateFormatter.formatDate(_nextExecutionDate),
                     style: TextStyle(
                       fontSize: 16,
                       color: isDark
                           ? AppColors.textPrimaryDark
                           : AppColors.textPrimaryLight,
                     ),
-                  ),
-                ),
-                Text(
-                  DateFormatter.formatRelative(_selectedDate),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark
-                        ? AppColors.textSecondaryDark
-                        : AppColors.textSecondaryLight,
                   ),
                 ),
               ],
@@ -463,30 +516,41 @@ class _AddEditTransactionScreenState
     );
   }
 
+  Widget _buildActiveSwitch(bool isDark) {
+    return SwitchListTile.adaptive(
+      contentPadding: EdgeInsets.zero,
+      value: _isActive,
+      onChanged: (v) => setState(() => _isActive = v),
+      title: const Text('Kích hoạt'),
+      subtitle: const Text('Tự động tạo giao dịch theo lịch'),
+    );
+  }
+
   Widget _buildSubmitButton() {
     final color = _selectedType == TransactionType.expense
         ? AppColors.expense
         : AppColors.income;
 
     return SizedBox(
-      height: 52,
+      width: double.infinity,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _submit,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
         ),
         child: _isLoading
             ? const SizedBox(
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Text(
-                isEditing ? 'Cập nhật' : 'Thêm giao dịch',
+                isEditing ? 'Lưu thay đổi' : 'Tạo giao dịch định kỳ',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -496,99 +560,142 @@ class _AddEditTransactionScreenState
     );
   }
 
-  Future<void> _selectDate() async {
+  Widget _buildDeleteButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: _isLoading ? null : _confirmDelete,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        child: const Text(
+          'Xóa giao dịch định kỳ',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectNextExecutionDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: _nextExecutionDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
     );
+
     if (picked != null) {
-      setState(() => _selectedDate = picked);
+      setState(() => _nextExecutionDate = picked);
     }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedCategoryId == null) return;
-    if (_selectedWalletId == null) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (_selectedCategoryId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn danh mục')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     final amount =
-        double.parse(_amountController.text.replaceAll('.', ''));
+        double.parse(_amountController.text.replaceAll('.', '').trim());
+    final note = _noteController.text.trim();
 
     bool success;
+
     if (isEditing) {
-      final updated = widget.transaction!.copyWith(
+      final updated = widget.template!.copyWith(
         amount: amount,
         type: _selectedType,
         categoryId: _selectedCategoryId,
         walletId: _selectedWalletId,
-        date: _selectedDate,
-        note: _noteController.text.trim(),
+        frequency: _selectedFrequency,
+        nextExecutionDate: _nextExecutionDate,
+        isActive: _isActive,
+        note: note,
+        updatedAt: DateTime.now(),
       );
-      success = await ref
-          .read(transactionNotifierProvider.notifier)
-          .updateTransaction(updated);
-    } else {
+
       success =
-          await ref.read(transactionNotifierProvider.notifier).createTransaction(
-                amount: amount,
-                type: _selectedType,
-                categoryId: _selectedCategoryId!,
-                walletId: _selectedWalletId!,
-                date: _selectedDate,
-                note: _noteController.text.trim(),
-              );
+          await ref.read(recurringNotifierProvider.notifier).updateTemplate(updated);
+    } else {
+      success = await ref.read(recurringNotifierProvider.notifier).createTemplate(
+            amount: amount,
+            type: _selectedType,
+            categoryId: _selectedCategoryId!,
+            walletId: _selectedWalletId!,
+            frequency: _selectedFrequency,
+            nextExecutionDate: _nextExecutionDate,
+            note: note,
+          );
     }
 
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
       Navigator.pop(context, true);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Có lỗi xảy ra, vui lòng thử lại')),
-      );
     }
   }
 
-  void _confirmDelete() {
-    showDialog(
+  Future<void> _confirmDelete() async {
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Xóa giao dịch?'),
-        content: const Text('Bạn có chắc muốn xóa giao dịch này không?'),
+        title: const Text('Xóa giao dịch định kỳ?'),
+        content: const Text(
+          'Bạn có chắc muốn xóa giao dịch định kỳ này?\n'
+          'Các giao dịch đã tạo sẽ không bị ảnh hưởng.',
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Hủy'),
           ),
           TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _deleteTransaction();
-            },
+            onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Xóa'),
           ),
         ],
       ),
     );
-  }
 
-  Future<void> _deleteTransaction() async {
+    if (result != true) return;
+
     setState(() => _isLoading = true);
 
     final success = await ref
-        .read(transactionNotifierProvider.notifier)
-        .deleteTransaction(widget.transaction!.id);
+        .read(recurringNotifierProvider.notifier)
+        .deleteTemplate(widget.template!.id);
 
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
       Navigator.pop(context, true);
+    }
+  }
+
+  String _getFrequencyText(RecurringFrequency frequency) {
+    switch (frequency) {
+      case RecurringFrequency.daily:
+        return 'Hàng ngày';
+      case RecurringFrequency.weekly:
+        return 'Hàng tuần';
+      case RecurringFrequency.monthly:
+        return 'Hàng tháng';
     }
   }
 }
@@ -599,7 +706,6 @@ class _ThousandsSeparatorInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Don't interfere with IME composing (e.g. Vietnamese accent input).
     if (VietnameseIMEHelper.isComposing(newValue)) {
       return newValue;
     }

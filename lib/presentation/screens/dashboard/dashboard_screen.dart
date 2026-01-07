@@ -8,6 +8,7 @@ import '../../providers/transaction_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/widgets.dart';
+import '../wallet/wallets_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -153,7 +154,14 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const WalletsScreen(),
+                    ),
+                  );
+                },
                 child: const Text('Xem tất cả'),
               ),
             ],
@@ -182,7 +190,14 @@ class DashboardScreen extends ConsumerWidget {
                         currencyCode: w.wallet.currencyCode,
                       ))
                   .toList(),
-              onWalletTap: (walletId) {},
+              onWalletTap: (walletId) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const WalletsScreen(),
+                  ),
+                );
+              },
             );
           },
           loading: () => const SizedBox(
