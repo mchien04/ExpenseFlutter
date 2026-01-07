@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/app_colors.dart';
 import '../dashboard/dashboard_screen.dart';
+import '../transaction/transaction_history_screen.dart';
+import '../transaction/add_edit_transaction_screen.dart';
+import '../statistics/statistics_screen.dart';
+import '../settings/settings_screen.dart';
 
 final currentTabProvider = StateProvider<int>((ref) => 0);
 
@@ -19,9 +23,9 @@ class MainScreen extends ConsumerWidget {
         index: currentTab,
         children: const [
           DashboardScreen(),
-          _PlaceholderScreen(title: 'Giao dịch'),
-          _PlaceholderScreen(title: 'Thống kê'),
-          _PlaceholderScreen(title: 'Cài đặt'),
+          TransactionHistoryScreen(),
+          StatisticsScreen(),
+          SettingsScreen(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -129,163 +133,10 @@ class MainScreen extends ConsumerWidget {
   }
 
   void _showAddTransactionSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _QuickAddTransactionSheet(),
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-
-  const _PlaceholderScreen({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 24),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickAddTransactionSheet extends ConsumerStatefulWidget {
-  const _QuickAddTransactionSheet();
-
-  @override
-  ConsumerState<_QuickAddTransactionSheet> createState() =>
-      _QuickAddTransactionSheetState();
-}
-
-class _QuickAddTransactionSheetState
-    extends ConsumerState<_QuickAddTransactionSheet> {
-  bool isExpense = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade400,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Thêm giao dịch',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark
-                  ? AppColors.textPrimaryDark
-                  : AppColors.textPrimaryLight,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildTypeButton(
-                    label: 'Chi tiêu',
-                    isSelected: isExpense,
-                    color: AppColors.expense,
-                    onTap: () => setState(() => isExpense = true),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildTypeButton(
-                    label: 'Thu nhập',
-                    isSelected: !isExpense,
-                    color: AppColors.income,
-                    onTap: () => setState(() => isExpense = false),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Tính năng đầy đủ sẽ có trong Phase 7',
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isExpense ? AppColors.expense : AppColors.income,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('Tiếp tục'),
-              ),
-            ),
-          ),
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTypeButton({
-    required String label,
-    required bool isSelected,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? color : color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? color : color.withOpacity(0.3),
-            width: 2,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : color,
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-            ),
-          ),
-        ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AddEditTransactionScreen(),
       ),
     );
   }
